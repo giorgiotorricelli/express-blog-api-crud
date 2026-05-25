@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { urlencoded } from 'express';
 import router from './routers/postsRouter.js';
 
 
@@ -7,6 +7,8 @@ const app = express();
 const server_port = process.env.SERVER_PORT;
 
 app.use('/posts' , router); 
+app.use(express.json());
+app.use(express.urlencoded());
 
 
 
