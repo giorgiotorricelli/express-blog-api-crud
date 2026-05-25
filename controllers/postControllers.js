@@ -161,9 +161,17 @@ function destroy(request, response) {
         return;
     }
 
+    const deletingId = posts.indexOf(searchedPost);
+
+    posts.splice(deletingId, 1);
+    
+
     response.status(200).json({
         message: `post con id ${realId} eliminato`
     })
+
+    console.log(posts);
+    
 }
 
 
