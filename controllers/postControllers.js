@@ -168,9 +168,12 @@ function show(request, response) {
 }
 
 function create(request, response) {
-    response.status(200).json({
-        message: 'post creato con id puppa'
-    })
+    console.log(request.body);
+    
+    response.status(201).json({
+        message: "Stai provando a creare dei dati",
+        dati: request.body 
+    });
 }
 
 function update(request, response) {
