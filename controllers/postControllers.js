@@ -117,22 +117,10 @@ function index(request, response) {
         }
         return;
     } */
-
+    console.log(request.query);
+    
 
     const generalQuery = { ...request.query };
-
-    function isVuoto(obj) {
-        return Object.keys(obj).length === 0;
-    }
-
-
-
-    if (isVuoto(generalQuery)) {
-        response.status(400).json({
-            message: "Attenzione, stai inserendo una query vuota"
-        });
-        return;
-    }
 
     for (let i in generalQuery) {
         if (generalQuery[i] === '') {
@@ -143,10 +131,9 @@ function index(request, response) {
         }
     }
 
-    console.log(request.query.sort_slower);
-
 
     response.status(200).json({
+        
         message: "Ecco la lista dei post",
         posts: posts
     });
@@ -190,9 +177,14 @@ function show(request, response) {
 }
 
 function create(request, response) {
-    console.log(request.body);
-    for (let prop in request.body) {
-        if (rawPosts.hasOwnProperty(prop)) {
+    console.log(Object.keys(request.body).length); 
+    const { slug, ...rest} = posts[0]; //mi serve l'oggetto senza slug per la validazione
+    console.log(typeof rest.tags);
+    
+
+    for (let prop in request.body) { //se si inserisce una proprietà non valida
+        if (rest.hasOwnProperty(prop)) {
+            
             continue;
         } else {
             response.status(400).json({
@@ -200,7 +192,13 @@ function create(request, response) {
             });
             return;
         }
+    }
 
+    if (Object.keys(request.body).length !== Object.keys(rest).length) { //se non ci sono tutte le proprietà
+        response.status(400).json({
+                message: `Mancano una o più proprietà`
+            });
+        return;
     }
 
 
