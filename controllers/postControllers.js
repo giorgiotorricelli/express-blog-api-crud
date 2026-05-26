@@ -201,6 +201,29 @@ function create(request, response) {
         return;
     }
 
+    if (typeof request.body.tags !== 'object' || request.body.tags.length === 0) {
+        response.status(400).json({
+                message: `Il valore di 'tags' deve essere un array di stringhe non vuoto`
+            });
+        return;
+    }
+
+    request.body.tags.forEach(tag => {
+        if (typeof tag !== 'string') {
+            response.status(400).json({
+                message: `Puoi inserire solo stringhe all'interno di 'tags'`
+            });
+        return;
+        }
+    });
+
+    if (typeof request.body.prep_time !== 'number') {
+        response.status(400).json({
+                message: `Il valore di 'prep_time' deve essere un numero`
+            });
+        return;
+    }
+
     const newPostId = rawPosts[rawPosts.length - 1].id + 1;
     const date = new Date();
     const newPostDay = date.toLocaleDateString();
