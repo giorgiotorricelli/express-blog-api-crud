@@ -201,6 +201,13 @@ function create(request, response) {
         return;
     }
 
+    const newPostId = rawPosts[rawPosts.length - 1].id + 1;
+    const date = new Date();
+    const newPostDay = date.toLocaleDateString();
+    const newPostTime = date.toLocaleTimeString();
+    const newPostDate = `${newPostDay}T${newPostTime}Z`;
+    
+
 
     response.status(201).json({
         message: "Stai provando a creare dei dati",
