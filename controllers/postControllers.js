@@ -1,10 +1,10 @@
 import { response } from "express";
 import rawPosts from "../data/posts.js";
 
-const posts = rawPosts.map(post => {
+let posts = rawPosts.map(post => {
     const { id, created_at, published, ...rest } = post;
     return rest;
-})
+});
 
 function multipleTagsSearch(stricts, flexibles, response) {
     if (stricts.length > 1 && flexibles.length > 1) { //nel caso l'utente inserisca ',' e '||' insieme
@@ -118,7 +118,7 @@ function index(request, response) {
         return;
     } */
     console.log(request.query);
-    
+
 
     const generalQuery = { ...request.query };
 
@@ -133,7 +133,7 @@ function index(request, response) {
 
 
     response.status(200).json({
-        
+
         message: "Ecco la lista dei post",
         posts: posts
     });
@@ -177,14 +177,13 @@ function show(request, response) {
 }
 
 function create(request, response) {
-    console.log(Object.keys(request.body).length); 
-    const { slug, ...rest} = posts[0]; //mi serve l'oggetto senza slug per la validazione
-    console.log(typeof rest.tags);
-    
+    const { slug, ...rest } = posts[0]; //mi serve l'oggetto senza slug per la validazione
+    const validImgFormats = ["jpg", "jpeg", "png", "webp", "gif", "svg", "tif", "tiff"];
+
 
     for (let prop in request.body) { //se si inserisce una proprietà non valida
         if (rest.hasOwnProperty(prop)) {
-            
+
             continue;
         } else {
             response.status(400).json({
@@ -196,15 +195,24 @@ function create(request, response) {
 
     if (Object.keys(request.body).length !== Object.keys(rest).length) { //se non ci sono tutte le proprietà
         response.status(400).json({
-                message: `Mancano una o più proprietà`
-            });
+            message: `Mancano una o più proprietà`
+        });
+        return;
+    }
+
+    const splittedImgUrl = request.body.image.split('.');
+
+    if (!validImgFormats.includes(splittedImgUrl[splittedImgUrl.length - 1])) {
+        response.status(400).json({
+            message: `Inserisci un formato immagine tra quelli supportati: 'jpg', 'jpeg', 'png', 'webp', 'gif', 'svg', 'tif', 'tiff'`
+        });
         return;
     }
 
     if (typeof request.body.tags !== 'object' || request.body.tags.length === 0) {
         response.status(400).json({
-                message: `Il valore di 'tags' deve essere un array di stringhe non vuoto`
-            });
+            message: `Il valore di 'tags' deve essere un array di stringhe non vuoto`
+        });
         return;
     }
 
@@ -213,14 +221,14 @@ function create(request, response) {
             response.status(400).json({
                 message: `Puoi inserire solo stringhe all'interno di 'tags'`
             });
-        return;
+            return;
         }
     });
 
     if (typeof request.body.prep_time !== 'number') {
         response.status(400).json({
-                message: `Il valore di 'prep_time' deve essere un numero`
-            });
+            message: `Il valore di 'prep_time' deve essere un numero`
+        });
         return;
     }
 
@@ -230,33 +238,41 @@ function create(request, response) {
     const newPostTime = date.toLocaleTimeString();
     const newPostDate = `${newPostDay}T${newPostTime}Z`;
     const rawSlugArr = request.body.title.split(' ');
-    let cleanPostSlug;
-    
-    cleanPostSlug = rawSlugArr.filter(current => {
+    let newPostSlug;
+
+    newPostSlug = rawSlugArr.filter(current => {
         return current !== '';
     }).join('-').toLowerCase();
 
     let slugCounter = 1;
-    let tempSlug = cleanPostSlug;
+    let tempSlug = newPostSlug;
     posts.forEach(post => {
         if (tempSlug === post.slug) {
-            tempSlug = `${cleanPostSlug}-${slugCounter}`;
+            tempSlug = `${newPostSlug}-${slugCounter}`;
             slugCounter++;
         }
     })
 
-    cleanPostSlug = tempSlug;
+    newPostSlug = tempSlug;
 
-    console.log(cleanPostSlug);
-    
-    
-    
-    
+    const newPost = {
+        ...request.body,
+        id: newPostId,
+        created_at: newPostDate,
+        slug: newPostSlug
+    }
+
+    rawPosts.push(newPost);
+
+    posts = rawPosts.map(post => {
+        const { id, created_at, published, ...rest } = post;
+        return rest;
+    })
+
 
 
     response.status(201).json({
-        message: "Stai provando a creare dei dati",
-        dati: request.body
+        message: `Post creato correttamente con slug: '${newPostSlug}'`
     });
 }
 
