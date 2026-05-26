@@ -1,40 +1,45 @@
 import { response } from "express";
-import posts from "../data/posts.js";
+import rawPosts from "../data/posts.js";
 
-function multipleTagsSearch(stricts, flexibles, response){
-            if (stricts.length > 1 && flexibles.length > 1) { //nel caso l'utente inserisca ',' e '||' insieme
-                response.status(400).json({
-                    message: `Non puoi utilizzare strict mode e flexible mode insieme`
-                });
-                return resp;
-            }
-            if (stricts.length > 1) {
-                const tagSearch = posts.filter(post => {
-                    const tagsLower = post.tags.map(tag => {
-                        return tag.toLowerCase();
-                    })
-                    return stricts.every(element => {
-                        return tagsLower.includes(element)
-                    });
-                });
-                response.status(200).json({
-                    message: `Ecco la lista dei post contenenti OGNI tag inserito (strict mode)`,
-                    posts: tagSearch
-                });
-            } else if (flexibles.length > 1) {
-                const tagSearch = posts.filter(post => {
-                    const tagsLower = post.tags.map(tag => {
-                        return tag.toLowerCase();
-                    })
-                    return flexibles.some(element => {
-                        return tagsLower.includes(element)
-                    });
-                });
-                response.status(200).json({
-                    message: `Ecco la lista dei post contenenti ALMENO UNO dei tag inseriti (flexible mode)`,
-                    posts: tagSearch
-                });
-            }
+const posts = rawPosts.map(post => {
+    const { id, created_at, published, ...rest } = post;
+    return rest;
+})
+
+function multipleTagsSearch(stricts, flexibles, response) {
+    if (stricts.length > 1 && flexibles.length > 1) { //nel caso l'utente inserisca ',' e '||' insieme
+        response.status(400).json({
+            message: `Non puoi utilizzare strict mode e flexible mode insieme`
+        });
+        return resp;
+    }
+    if (stricts.length > 1) {
+        const tagSearch = posts.filter(post => {
+            const tagsLower = post.tags.map(tag => {
+                return tag.toLowerCase();
+            })
+            return stricts.every(element => {
+                return tagsLower.includes(element)
+            });
+        });
+        response.status(200).json({
+            message: `Ecco la lista dei post contenenti OGNI tag inserito (strict mode)`,
+            posts: tagSearch
+        });
+    } else if (flexibles.length > 1) {
+        const tagSearch = posts.filter(post => {
+            const tagsLower = post.tags.map(tag => {
+                return tag.toLowerCase();
+            })
+            return flexibles.some(element => {
+                return tagsLower.includes(element)
+            });
+        });
+        response.status(200).json({
+            message: `Ecco la lista dei post contenenti ALMENO UNO dei tag inseriti (flexible mode)`,
+            posts: tagSearch
+        });
+    }
 }
 
 function index(request, response) {
@@ -65,93 +70,110 @@ function index(request, response) {
             multipleTagsSearch(multipleTagsStrict, multipleTagsFlexible, response);
             return;
         }
-
-        if (request.query.sort_quicker !== undefined) {
-            const sortQuick = posts.toSorted(function (a, b) { return a.prep_time - b.prep_time });
-
-            response.status(200).json({
-                message: "Ecco la lista dei post in ordine di prep time (dal più veloce)",
-                posts: sortQuick
-            });
-            return;
-
-        }
-
-        if (request.query.sort_slower !== undefined) {
-            const sortSlow = posts.toSorted(function (a, b) { return b.prep_time - a.prep_time });
-
-            response.status(200).json({
-                message: "Ecco la lista dei post in ordine di prep time (dal più dispendioso)",
-                posts: sortSlow
-            });
-            return;
-
-        }
-
-        if (request.query.published !== undefined) {
-            if (request.query.published === 'true') {
-                const pubFiltered = posts.filter(post => {
-                    return post.published === true;
-                });
-                response.status(200).json({
-                    message: "Ecco la lista dei post pubblicati",
-                    posts: pubFiltered
-                });
-            } else if (request.query.published === 'false') {
-                const pubFiltered = posts.filter(post => {
-                    return post.published === false;
-                });
-                response.status(200).json({
-                    message: "Ecco la lista dei post non pubblicati",
-                    posts: pubFiltered
-                });
-            } else {
-                response.status(400).json({
-                    message: "Il valore di published deve essere un booleano"
-                });
-            }
-            return;
-        }
-
-
-        const generalQuery = { ...request.query };
-
-        function isVuoto(obj) {
-            return Object.keys(obj).length === 0;
-        }
-
-
-
-        if (isVuoto(generalQuery)) {
-            response.status(400).json({
-                message: "Attenzione, stai inserendo una query vuota"
-            });
-            return;
-        }
-
-        for (let i in generalQuery) {
-            if (generalQuery[i] === '') {
-                response.status(400).json({
-                    message: "Valore della query errato"
-                });
-                return;
-            }
-        }
-
+    }
+    if (request.query.sort_quicker !== undefined) {
+        const sortQuick = posts.toSorted(function (a, b) { return a.prep_time - b.prep_time });
 
         response.status(200).json({
-            message: "Ecco la lista dei post",
-            posts: posts
+            message: "Ecco la lista dei post in ordine di prep time (dal più veloce)",
+            posts: sortQuick
         });
+        return;
+
     }
+
+    if (request.query.sort_slower !== undefined) {
+        const sortSlow = posts.toSorted(function (a, b) { return b.prep_time - a.prep_time });
+
+        response.status(200).json({
+            message: "Ecco la lista dei post in ordine di prep time (dal più dispendioso)",
+            posts: sortSlow
+        });
+        return;
+
+    }
+
+    /* if (request.query.published !== undefined) {
+        if (request.query.published === 'true') {
+            const pubFiltered = posts.filter(post => {
+                return post.published === true;
+            });
+            response.status(200).json({
+                message: "Ecco la lista dei post pubblicati",
+                posts: pubFiltered
+            });
+        } else if (request.query.published === 'false') {
+            const pubFiltered = posts.filter(post => {
+                return post.published === false;
+            });
+            response.status(200).json({
+                message: "Ecco la lista dei post non pubblicati",
+                posts: pubFiltered
+            });
+        } else {
+            response.status(400).json({
+                message: "Il valore di published deve essere un booleano"
+            });
+        }
+        return;
+    } */
+
+
+    const generalQuery = { ...request.query };
+
+    function isVuoto(obj) {
+        return Object.keys(obj).length === 0;
+    }
+
+
+
+    if (isVuoto(generalQuery)) {
+        response.status(400).json({
+            message: "Attenzione, stai inserendo una query vuota"
+        });
+        return;
+    }
+
+    for (let i in generalQuery) {
+        if (generalQuery[i] === '') {
+            response.status(400).json({
+                message: "Valore della query errato"
+            });
+            return;
+        }
+    }
+
+    console.log(request.query.sort_slower);
+
+
+    response.status(200).json({
+        message: "Ecco la lista dei post",
+        posts: posts
+    });
 }
 
+
+
+
 function show(request, response) {
-    const id = request.params.id;
-    const realId = Number(id);
+    const slug = (request.params.slug).trim();
+
+    if (slug === '') {
+        response.status(400).json({
+            message: "Lo slug non può essere vuoto"
+        });
+        return;
+    }
+
+    if (!isNaN(Number(slug))) { //se slug è un numero
+        response.status(400).json({
+            message: "Lo slug non può essere un numero"
+        });
+        return;
+    }
 
     const searchedPost = posts.find(post => {
-        return post.id === realId;
+        return post.slug === slug;
     })
 
     if (searchedPost) {
@@ -161,7 +183,7 @@ function show(request, response) {
         })
     } else {
         response.status(404).json({
-            message: "Id non presente o non valido"
+            message: "Post non trovato"
         })
     }
 
@@ -169,10 +191,22 @@ function show(request, response) {
 
 function create(request, response) {
     console.log(request.body);
-    
+    for (let prop in request.body) {
+        if (rawPosts.hasOwnProperty(prop)) {
+            continue;
+        } else {
+            response.status(400).json({
+                message: `Non puoi inserire '${prop}' come proprietà`
+            });
+            return;
+        }
+
+    }
+
+
     response.status(201).json({
         message: "Stai provando a creare dei dati",
-        dati: request.body 
+        dati: request.body
     });
 }
 
