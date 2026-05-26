@@ -229,6 +229,28 @@ function create(request, response) {
     const newPostDay = date.toLocaleDateString();
     const newPostTime = date.toLocaleTimeString();
     const newPostDate = `${newPostDay}T${newPostTime}Z`;
+    const rawSlugArr = request.body.title.split(' ');
+    let cleanPostSlug;
+    
+    cleanPostSlug = rawSlugArr.filter(current => {
+        return current !== '';
+    }).join('-').toLowerCase();
+
+    let slugCounter = 1;
+    let tempSlug = cleanPostSlug;
+    posts.forEach(post => {
+        if (tempSlug === post.slug) {
+            tempSlug = `${cleanPostSlug}-${slugCounter}`;
+            slugCounter++;
+        }
+    })
+
+    cleanPostSlug = tempSlug;
+
+    console.log(cleanPostSlug);
+    
+    
+    
     
 
 

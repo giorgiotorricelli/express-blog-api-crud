@@ -61,7 +61,7 @@ const posts = [
     published: false,
     prep_time: 60,
     created_at: "2024-05-22T11:00:00.000Z",
-  },
+  }
 ];
 
 export default posts;
