@@ -1,12 +1,8 @@
 import { response } from "express";
 import rawPosts from "../data/posts.js";
 
-let posts = rawPosts.map(post => {
-    const { id, created_at, published, ...rest } = post;
-    return rest;
-});
 
-function multipleTagsSearch(stricts, flexibles, response) {
+function multipleTagsSearch(stricts, flexibles, posts, response) {
     if (stricts.length > 1 && flexibles.length > 1) { //nel caso l'utente inserisca ',' e '||' insieme
         response.status(400).json({
             message: `Non puoi utilizzare strict mode e flexible mode insieme`
@@ -43,6 +39,10 @@ function multipleTagsSearch(stricts, flexibles, response) {
 }
 
 function index(request, response) {
+    const posts = rawPosts.map(post => {
+        const { id, created_at, published, ...rest } = post;
+        return rest;
+    });
 
 
     if (request.query.tags !== undefined) {
@@ -67,7 +67,7 @@ function index(request, response) {
                 posts: tagSearch
             });
         } else {
-            multipleTagsSearch(multipleTagsStrict, multipleTagsFlexible, response);
+            multipleTagsSearch(multipleTagsStrict, multipleTagsFlexible, posts, response);
             return;
         }
     }
@@ -139,10 +139,11 @@ function index(request, response) {
     });
 }
 
-
-
-
-function show(request, response) {
+function showAndDeleteValidation(request, response) {
+    const posts = rawPosts.map(post => {
+        const { id, created_at, published, ...rest } = post;
+        return rest;
+    });
     const slug = (request.params.slug).trim();
 
     if (slug === '') {
@@ -161,7 +162,16 @@ function show(request, response) {
 
     const searchedPost = posts.find(post => {
         return post.slug === slug;
-    })
+    });
+    
+
+    return { searchedPost };
+}
+
+
+function show(request, response) {
+    const { searchedPost } = showAndDeleteValidation(request, response);
+    
 
     if (searchedPost) {
         response.status(200).json({
@@ -176,8 +186,8 @@ function show(request, response) {
 
 }
 
-function create(request, response) {
-    const { slug, ...rest } = posts[0]; //mi serve l'oggetto senza slug per la validazione
+function createAndUpdateValidation(request, response) {
+    const { id, created_at, published, slug, ...rest } = rawPosts[0]; //mi serve l'oggetto senza slug per la validazione
     const validImgFormats = ["jpg", "jpeg", "png", "webp", "gif", "svg", "tif", "tiff"];
 
 
@@ -199,6 +209,8 @@ function create(request, response) {
         });
         return;
     }
+
+
 
     const splittedImgUrl = request.body.image.split('.');
 
@@ -232,7 +244,9 @@ function create(request, response) {
         return;
     }
 
-    const newPostId = rawPosts[rawPosts.length - 1].id + 1;
+    const sortedByIndex = rawPosts.toSorted(function (a, b) { return b.id - a.id });
+
+    const newPostId = sortedByIndex[0] + 1;
     const date = new Date();
     const newPostDay = date.toLocaleDateString();
     const newPostTime = date.toLocaleTimeString();
@@ -245,8 +259,11 @@ function create(request, response) {
     }).join('-').toLowerCase();
 
     let slugCounter = 1;
-    let tempSlug = newPostSlug;
-    posts.forEach(post => {
+    let tempSlug = newPostSlug;                                                                          //positionToUpdate
+    const positionToUpdate = rawPosts.findIndex((post) => {return post.slug === request.params.slug}); //serve per sovrascrivere il post precedente
+    console.log(positionToUpdate);
+    
+    rawPosts.forEach(post => {
         if (tempSlug === post.slug) {
             tempSlug = `${newPostSlug}-${slugCounter}`;
             slugCounter++;
@@ -259,64 +276,31 @@ function create(request, response) {
         ...request.body,
         id: newPostId,
         created_at: newPostDate,
-        slug: newPostSlug
+        slug: newPostSlug,
+        published: true
     }
 
+    return {newPost, positionToUpdate};
+}
+
+function create(request, response) {
+    const { newPost } = createAndUpdateValidation(request, response)
+    
     rawPosts.push(newPost);
 
-    posts = rawPosts.map(post => {
-        const { id, created_at, published, ...rest } = post;
-        return rest;
-    })
-
-
-
     response.status(201).json({
-        message: `Post creato correttamente con slug: '${newPostSlug}'`
+        message: `Post creato correttamente con slug: '${newPost.slug}'`
     });
 }
 
 function update(request, response) {
-    const id = request.params.id;
-    const realId = Number(id.trim());
+    const {newPost: updatedPost, positionToUpdate} = createAndUpdateValidation(request, response);
 
+    rawPosts.splice(positionToUpdate, 1, updatedPost);
 
-
-    if (isNaN(realId)) {
-        response.status(400).json({
-            message: `L'id deve avere un valore numerico`
-        });
-        return;
-    }
-
-    if (!realId) {
-        response.status(400).json({
-            message: `L'id non può essere nè zero nè vuoto`,
-            id: realId
-        });
-        return;
-    }
-
-    if (realId < 0) {
-        response.status(400).json({
-            message: `L'id non può essere minore di 0`
-        });
-        return;
-    }
-
-    const searchedPost = posts.find(post => {
-        return post.id === realId;
-    })
-
-    if (!searchedPost) {
-        response.status(404).json({
-            message: `Id: ${realId} non trovato`
-        });
-        return;
-    }
 
     response.status(200).json({
-        message: `post con id ${realId} updatato`
+        message: `post con slug: ${updatedPost.slug} updatato`
     })
 }
 
@@ -365,54 +349,15 @@ function modify(request, response) {
 }
 
 function destroy(request, response) {
-    const id = request.params.id;
-    const realId = Number(id.trim());
+    const { searchedPost } = showAndDeleteValidation(request, response);
+    const deletingId = rawPosts.findIndex((post) => {return post.slug === request.params.slug});
 
-
-
-    if (isNaN(realId)) {
-        response.status(400).json({
-            message: `L'id deve avere un valore numerico`
-        });
-        return;
-    }
-
-    if (!realId) {
-        response.status(400).json({
-            message: `L'id non può essere nè zero nè vuoto`,
-            id: realId
-        });
-        return;
-    }
-
-    if (realId < 0) {
-        response.status(400).json({
-            message: `L'id non può essere minore di 0`
-        });
-        return;
-    }
-
-    const searchedPost = posts.find(post => {
-        return post.id === realId;
-    })
-
-    if (!searchedPost) {
-        response.status(404).json({
-            message: `Id: ${realId} non trovato`
-        });
-        return;
-    }
-
-    const deletingId = posts.indexOf(searchedPost);
-
-    posts.splice(deletingId, 1);
+    rawPosts.splice(deletingId, 1);
 
 
     response.status(200).json({
-        message: `post con id ${realId} eliminato`
-    })
-
-    console.log(posts);
+        message: `post con slug: ${request.params.slug} eliminato`
+    });
 
 }
 
