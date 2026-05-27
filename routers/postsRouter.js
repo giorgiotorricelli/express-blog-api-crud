@@ -1,15 +1,15 @@
 import express from "express";
 import { index, show, create, update, modify, destroy } from '../controllers/postControllers.js';
-import errorHandlerShowAndDel from "../middlewares/errorHandler.js";
+import {slugValidation, postValidation} from "../middlewares/errorHandler.js";
 
 const router = express.Router();
 
 router.get('/', index);
-router.get('/:slug', errorHandlerShowAndDel, show);
-router.post('/', create);
-router.put('/:slug', update);
+router.get('/:slug', slugValidation, show);
+router.post('/', postValidation, create);
+router.put('/:slug', slugValidation, postValidation, update);
 router.patch('/:slug', modify);
-router.delete('/:slug', errorHandlerShowAndDel, destroy);
+router.delete('/:slug', slugValidation, destroy);
 
 
 export default router;
