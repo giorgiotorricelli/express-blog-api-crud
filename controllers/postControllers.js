@@ -146,20 +146,6 @@ function showAndDeleteValidation(request, response) {
     });
     const slug = (request.params.slug).trim();
 
-    if (slug === '') {
-        response.status(400).json({
-            message: "Lo slug non può essere vuoto"
-        });
-        return;
-    }
-
-    if (!isNaN(Number(slug))) { //se slug è un numero
-        response.status(400).json({
-            message: "Lo slug non può essere un numero"
-        });
-        return;
-    }
-
     const searchedPost = posts.find(post => {
         return post.slug === slug;
     });

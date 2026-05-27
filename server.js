@@ -1,5 +1,6 @@
 import express from 'express';
 import router from './routers/postsRouter.js';
+import notFound from './middlewares/notFound.js';
 
 
 const app = express();
@@ -13,7 +14,7 @@ app.use('/posts' , router);
 
 
 
-
+app.use(notFound);
 
 app.listen(server_port, (error) => {
     if (error) {
