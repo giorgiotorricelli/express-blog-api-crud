@@ -8,7 +8,7 @@ router.get('/', index);
 router.get('/:slug', slugValidation, show);
 router.post('/', postValidation, create);
 router.put('/:slug', slugValidation, postValidation, update);
-router.patch('/:slug', modify);
+router.patch('/:slug', slugValidation, modify);
 router.delete('/:slug', slugValidation, destroy);
 
 

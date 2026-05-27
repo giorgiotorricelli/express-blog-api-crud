@@ -1,5 +1,35 @@
 import { response } from "express";
 import rawPosts from "../data/posts.js";
+import { ChatAnthropic } from "@langchain/anthropic";
+import { HumanMessage, createAgent, tool } from "langchain";
+import { z } from 'zod';
+
+//modifiedByClaude(request, searchedPost)
+
+function modifiedByClaude({ request, searchedPost }) {
+    console.log(`Sto modificando`);
+    return postModifiedByClaude;
+}
+
+const claudeModifyTool = tool(modifiedByClaude, {
+    name: "claude_modify_tool",
+    description: "Tool avente l'utilità di modificare un oggetto json",
+    schema: z.object({
+        request: z.string().describe("La richiesta dell'utente, ovvero la ricetta da cercare per andare a modificare la ricetta precedente"),
+        searchedPost: z.object().describe("L'oggetto precedente (ricetta) il quale vanno modificate le proprietà: id, title, content, image, tags, published (passalo sempre a true), slug, prep_time, created_at (toISOString())")
+    })
+});
+
+const model = new ChatAnthropic({
+    model: 'claude-sonnet-4-6',
+    apiKey: process.env.CLAUDE_API_KEY
+});
+
+const agent = createAgent({
+    model,
+    tools: [claudeModifyTool]
+});
+
 
 
 function multipleTagsSearch(stricts, flexibles, posts, response) {
@@ -142,7 +172,7 @@ function index(request, response) {
 
 function show(request, response) {
     const searchedPost = request.searchedPost;
-    
+
 
     if (searchedPost) {
         response.status(200).json({
@@ -161,7 +191,7 @@ function show(request, response) {
 
 function create(request, response) {
     const newPost = request.newPost; //lo prendo dal middleware di validation
-    
+
     rawPosts.push(newPost);
 
     response.status(201).json({
@@ -174,6 +204,7 @@ function update(request, response) {
     const positionToUpdate = request.positionToUpdate; //prendo i dati dal middleware di validation
 
     rawPosts.splice(positionToUpdate, 1, updatedPost);
+    
 
 
     response.status(200).json({
@@ -181,48 +212,74 @@ function update(request, response) {
     })
 }
 
-function modify(request, response) {
-    const id = request.params.id;
-    const realId = Number(id.trim());
+async function gestisciAgente(requestForClaude, searchedPost) {
+    const response = await agent.invoke({
+        messages: [
+            new HumanMessage(`
+                Agisci come un assistente che modifica ricette.
+                
+                L'oggetto originale da modificare è:
+                ${JSON.stringify(searchedPost, null, 2)}
+
+                La richiesta di modifica dell'utente è:
+                "${requestForClaude}"
+
+                Usa il tool 'claude_modify_tool' per effettuare la modifica richiesta e restituisci ESCLUSIVAMENTE il JSON del post modificato e NIENT'ALTRO.
+            `),
+        ],
+    });
+
+    // Recuperiamo l'ultimo messaggio dell'agente (la risposta di Claude o l'output del tool)
+    const finalMessage = response.messages[response.messages.length - 1].content;
+    return finalMessage;
+}
+
+async function modify(request, response) { // <--- Aggiunto async
+    try {
+        const searchedPost = request.searchedPost;
+        const patchingId = request.patchingId;
+        const requestForClaude = request.body.message;
+        const sortedByIndex = rawPosts.toSorted(function (a, b) { return b.id - a.id });
+        const newPostId = sortedByIndex[0].id + 1;
+
+        if (!requestForClaude) {
+            return response.status(400).json({ message: "Manca il messaggio per Claude nel body" });
+        }
+
+        // Attendiamo che Claude faccia il suo lavoro
+        const resultFromClaude = await gestisciAgente(requestForClaude, searchedPost);
+
+        console.log("Risultato di Claude:", resultFromClaude);
+
+        const cleanJsonString = resultFromClaude
+            .replace(/^```json\s*/i, '')  // Rimuove ```json all'inizio (case-insensitive)
+            .replace(/^```\s*/i, '')      // Rimuove ``` all'inizio se manca la parola 'json'
+            .replace(/```$/, '')          // Rimuove ``` alla fine
+            .trim();                      // Rimuove spazi bianchi o a capo extra
+
+        
+        const updatedPost = JSON.parse(cleanJsonString);
+        const updatedPostPlusId = {
+            ...updatedPost,
+            id: newPostId
+        }
+        rawPosts.splice(patchingId, 1, updatedPostPlusId);
+
+        console.log(rawPosts);
+        
+        
 
 
 
-    if (isNaN(realId)) {
-        response.status(400).json({
-            message: `L'id deve avere un valore numerico`
+        // Per ora simuliamo il successo basandoci sulla risposta ricevuta
+        response.status(200).json({
+            message: `Post con slug ${searchedPost.slug} elaborato da Claude`
         });
-        return;
+
+    } catch (error) {
+        console.error("Errore durante la modifica con Claude:", error);
+        response.status(500).json({ message: "Errore interno dell'agente AI" });
     }
-
-    if (!realId) {
-        response.status(400).json({
-            message: `L'id non può essere nè zero nè vuoto`,
-            id: realId
-        });
-        return;
-    }
-
-    if (realId < 0) {
-        response.status(400).json({
-            message: `L'id non può essere minore di 0`
-        });
-        return;
-    }
-
-    const searchedPost = posts.find(post => {
-        return post.id === realId;
-    })
-
-    if (!searchedPost) {
-        response.status(404).json({
-            message: `Id: ${realId} non trovato`
-        });
-        return;
-    }
-
-    response.status(200).json({
-        message: `post con id ${realId} modificato`
-    })
 }
 
 function destroy(request, response) {

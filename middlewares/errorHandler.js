@@ -1,10 +1,6 @@
 import rawPosts from "../data/posts.js";
 
 function slugValidation(request, response, next) {
-  const posts = rawPosts.map(post => {
-    const { id, created_at, published, ...rest } = post;
-    return rest;
-  });
   const slug = (request.params.slug).trim();
 
   if (slug === '') {
@@ -24,11 +20,13 @@ function slugValidation(request, response, next) {
     return;
   }
 
-  const searchedPost = posts.find(post => {
+  const searchedPost = rawPosts.find(post => {
         return post.slug === slug;
     });
     
   request.searchedPost = searchedPost;
+  const patchingId = rawPosts.findIndex((post) => {return post.slug === request.params.slug});
+  request.patchingId = patchingId; //questo mi serve solo nel caso della patch
 
   next();
 }
